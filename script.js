@@ -31,38 +31,33 @@ let leftWristCircle = new Path.Circle({
   fillColor: 'red'
 });
 
-let leftWristPath = new Path({
-  strokeColor: 'black',
-  strokeWidth: values.strokeWidth,
-  strokeJoin: 'round'
-})
-
-let rightWristPath = new Path({
-  strokeColor: 'orange',
-  strokeWidth: values.strokeWidth,
-  strokeJoin: 'round'
-})
+let leftWristPath = null;
 
 function onPose(poses) {
   let pose = poses[0];
   if (pose) {
     let leftWrist = pose.pose.leftWrist;
     let rightWrist = pose.pose.rightWrist;
-    if (leftWrist.confidence >= 0.3) {
+    if (leftWrist.confidence > 0.3) {
       leftWristCircle.position = leftWrist;
       leftWristCircle.visible = true;
+
+      if (!leftWristPath) {
+        leftWristPath = new Path({
+          strokeColor: 'black',
+          strokeWidth: values.strokeWidth,
+          strokeJoin: 'round'
+        });
+      }
+
       leftWristPath.add(leftWrist);
       if (values.smoothing) {
         leftWristPath.smooth();
       }
     } else {
       leftWristCircle.visible = false;
-    }
-    if (rightWrist.confidence >= 0.3) {
-      rightWristPath.add(rightWrist);
-      if (values.smoothing) {
-        rightWristPath.smooth();
-      }
+
+      leftWristPath = null;
     }
   }
 }
