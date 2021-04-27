@@ -67,11 +67,21 @@ async function setupPoseNet() {
     });
     video.srcObject = stream;
 
-    const poseNet = ml5.poseNet(video, poseNetOptions, function () {
-      // PoseNet wants actual width & height values on the video. 
-      let bounds = video.getBoundingClientRect();
-      video.width = bounds.width;
-      video.height = bounds.height;
+    // Use a promise to wait until the video can play through.
+    await new Promise(function (resolve) {
+      video.addEventListener('canplaythrough', resolve)
+    })
+
+    // PoseNet wants actual width & height values on the video. 
+    let bounds = video.getBoundingClientRect();
+    video.width = bounds.width;
+    video.height = bounds.height;
+
+    // Now that the video has the correct size, we can start the poseNet.
+    // This will take some time to load the ML model, after that we will
+    // start receiving 'pose' events.
+    let poseNet = ml5.poseNet(video, poseNetOptions, function () {
+      console.log('Model loaded');
     });
     
     // Listen to new 'pose' events
