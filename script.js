@@ -1,76 +1,83 @@
-////////////////////////////////////////////////////////////////////////////////
-// Values
-
-let values = {
-  zigZag: false,
-  strokeWidth: 1
+// https://snyk.io/advisor/npm-package/@tensorflow-models/posenet
+let poseNetOptions = {
+  architecture: 'MobileNetV1',
+  imageScaleFactor: 0.3,
+  outputStride: 16,
+  flipHorizontal: true,
+  minConfidence: 0.8,
+  maxPoseDetections: 1,
+  scoreThreshold: 0.5,
+  nmsRadius: 20,
+  detectionType: 'single',
+  inputResolution: 513,
+  multiplier: 0.75,
+  quantBytes: 2,
 };
-tool.minDistance = 20;
 
-////////////////////////////////////////////////////////////////////////////////
-// Mouse handling
+let wristCircle = new Path.Circle({
+  center: view.center,
+  radius: 10,
+  fillColor: 'red'
+});
 
-let path;
+let wristPath = new Path({
+  strokeColor: 'black',
+  strokeWidth: 2,
+  strokeJoin: 'round'
+})
 
-function onMouseDown(event) {
-  path = new Path({
-    strokeColor: 'black',
-    strokeCap: 'round',
-    strokeJoin: 'round',
-    strokeWidth: values.strokeWidth
-  });
-  path.add(event.point);
-}
+let elbowPath = new Path({
+  strokeColor: 'orange',
+  strokeWidth: 2,
+  strokeJoin: 'round'
+})
 
-function onMouseDrag(event) {
-  if (values.zigZag) {
-    path.arcTo(event.point, event.count % 2 == 0);
-  } else {
-    path.arcTo(event.point);
-  }
-}
-
-////////////////////////////////////////////////////////////////////////////////
-// Interface
-
-let components = {
-  zigZag: {
-    label: 'Zig Zag'
-  },
-
-  strokeWidth: {
-    type: 'slider',
-    range: [1, 10],
-    label: 'Stroke Width'
-  },
-
-  minDistance: {
-    type: 'slider',
-    range: [0, 100],
-    value: tool.minDistance,
-    label: 'Min Step',
-    onChange: function(value) {
-      tool.minDistance = value; 
-    } 
-  },
-
-  download: {
-    type: 'button',
-    value: 'Download SVG',
-    onClick() {
-			let svg = paper.project.exportSVG({ asString: true });
-      // See: https://stackoverflow.com/a/49917066/1163708
-      let a = document.createElement('a');
-			a.href = URL.createObjectURL(new Blob([svg], { type: 'image/svg+xml' }));
-      let timestamp = new Date().toJSON().replace(/[-:]/g, '')
-      let parts = timestamp.match(/^20(.*)T(.*)\.\d*Z$/);
-			a.download = `Export_${parts[1]}_${parts[2]}.svg`;
-      let body = document.body;
-      body.appendChild(a);
-      a.click();
-      body.removeChild(a);
+function onPose(poses) {
+  let pose = poses[0];
+  if (pose) {
+    let leftWrist = pose.pose.leftWrist;
+    let leftElbow = pose.pose.leftElbow;
+    if (leftWrist.confidence >= 0.3) {
+      wristCircle.position = leftWrist;
+      wristCircle.visible = true;
+      wristPath.add(leftWrist);
+      wristPath.smooth();
+    } else {
+      wristCircle.visible = false;
+    }
+    if (leftElbow.confidence >= 0.3) {
+      elbowPath.add(leftElbow);
+      elbowPath.smooth();
     }
   }
-};
+}
 
-let palette = new Palette('Cloud Tool', components, values);
+async function setupPoseNet() {
+  // https://www.html5rocks.com/en/tutorials/getusermedia/intro/#toc-webaudio-api
+  let video = document.getElementById('video');
+
+  // Get access to the camera and connect it to the video tag:
+  let mediaDevices = navigator.mediaDevices;
+  if(mediaDevices && mediaDevices.getUserMedia) {
+    let stream = await mediaDevices.getUserMedia({
+      video: {
+        width: { min: 640 },
+        height: { min: 480 }
+      }
+    });
+    video.srcObject = stream;
+
+    const poseNet = ml5.poseNet(video, poseNetOptions, function () {
+      // PoseNet wants actual width & height values on the video. 
+      let bounds = video.getBoundingClientRect();
+      video.width = bounds.width;
+      video.height = bounds.height;
+    });
+    
+    // Listen to new 'pose' events
+    poseNet.on('pose', onPose);
+  }
+}
+
+setupPoseNet();
+
