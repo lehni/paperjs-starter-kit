@@ -1,10 +1,21 @@
+////////////////////////////////////////////////////////////////////////////////
+// Values
+
+let values = {
+  smoothing: true,
+  strokeWidth: 1
+};
+
+////////////////////////////////////////////////////////////////////////////////
+// PoseNet handling
+
 // https://snyk.io/advisor/npm-package/@tensorflow-models/posenet
 let poseNetOptions = {
   architecture: 'MobileNetV1',
   imageScaleFactor: 0.3,
   outputStride: 16,
   flipHorizontal: true,
-  minConfidence: 0.8,
+  minConfidence: 0.5,
   maxPoseDetections: 1,
   scoreThreshold: 0.5,
   nmsRadius: 20,
@@ -14,21 +25,21 @@ let poseNetOptions = {
   quantBytes: 2,
 };
 
-let wristCircle = new Path.Circle({
+let leftWristCircle = new Path.Circle({
   center: view.center,
   radius: 10,
   fillColor: 'red'
 });
 
-let wristPath = new Path({
+let leftWristPath = new Path({
   strokeColor: 'black',
-  strokeWidth: 2,
+  strokeWidth: values.strokeWidth,
   strokeJoin: 'round'
 })
 
-let elbowPath = new Path({
+let rightWristPath = new Path({
   strokeColor: 'orange',
-  strokeWidth: 2,
+  strokeWidth: values.strokeWidth,
   strokeJoin: 'round'
 })
 
@@ -36,18 +47,22 @@ function onPose(poses) {
   let pose = poses[0];
   if (pose) {
     let leftWrist = pose.pose.leftWrist;
-    let leftElbow = pose.pose.leftElbow;
+    let rightWrist = pose.pose.rightWrist;
     if (leftWrist.confidence >= 0.3) {
-      wristCircle.position = leftWrist;
-      wristCircle.visible = true;
-      wristPath.add(leftWrist);
-      wristPath.smooth();
+      leftWristCircle.position = leftWrist;
+      leftWristCircle.visible = true;
+      leftWristPath.add(leftWrist);
+      if (values.smoothing) {
+        leftWristPath.smooth();
+      }
     } else {
-      wristCircle.visible = false;
+      leftWristCircle.visible = false;
     }
-    if (leftElbow.confidence >= 0.3) {
-      elbowPath.add(leftElbow);
-      elbowPath.smooth();
+    if (rightWrist.confidence >= 0.3) {
+      rightWristPath.add(rightWrist);
+      if (values.smoothing) {
+        rightWristPath.smooth();
+      }
     }
   }
 }
@@ -91,3 +106,38 @@ async function setupPoseNet() {
 
 setupPoseNet();
 
+
+////////////////////////////////////////////////////////////////////////////////
+// Interface
+
+let components = {
+  strokeWidth: {
+    type: 'slider',
+    range: [1, 10],
+    label: 'Stroke Width'
+  },
+
+  smoothing: {
+    label: 'Smoothing'
+  },
+
+  download: {
+    type: 'button',
+    value: 'Download SVG',
+    onClick() {
+      let svg = paper.project.exportSVG({ asString: true });
+      // See: https://stackoverflow.com/a/49917066/1163708
+      let a = document.createElement('a');
+      a.href = URL.createObjectURL(new Blob([svg], { type: 'image/svg+xml' }));
+      let timestamp = new Date().toJSON().replace(/[-:]/g, '')
+      let parts = timestamp.match(/^20(.*)T(.*)\.\d*Z$/);
+      a.download = `Export_${parts[1]}_${parts[2]}.svg`;
+      let body = document.body;
+      body.appendChild(a);
+      a.click();
+      body.removeChild(a);
+    }
+  }
+};
+
+let palette = new Palette('PoseNet Tool', components, values);
