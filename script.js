@@ -3,8 +3,82 @@
 
 let values = {
   smoothing: true,
-  strokeWidth: 1
+  minSpeed: 10
 };
+
+////////////////////////////////////////////////////////////////////////////////
+// Mouse Tool
+
+// This version of the Brush tool only draws paths when you drag the mouse
+// fast enough, when you drag to slow it finishes the current path and waits
+// for the user to drag fast again:
+
+let path;
+
+tool.maxDistance = 10;
+
+function onMouseDrag(event) {
+  // If the user dragged more then minSize:
+  if (event.delta.length > values.minSpeed) {
+    event.delta.length = event.delta.length - values.minSpeed;
+    // If there is no path, make one:
+    if (!path) {
+      path = new Path({
+        fillColor: 'black'
+      });
+      path.add(event.lastPoint);
+    }
+
+    let step = event.delta / 2;
+    step.angle += 90;
+
+    // The top point: the middle point + the step rotated by 90 degrees:
+    //   -----*
+    //   |
+    //   ------
+    let top = event.middlePoint + step;
+
+    // The bottom point: the middle point - the step rotated by 90 degrees:
+    //   ------
+    //   |
+    //   -----*
+    let bottom = event.middlePoint - step;
+
+    path.add(top);
+    path.insert(0, bottom);
+    if (values.smoothing) {
+      path.smooth();
+    }
+  } else {
+    // If the user dragged too slowly:
+    
+    // If there is currently a path, close it
+    if (path) {
+      // Add the first point at position middlePoint:
+      path.add(event.middlePoint);
+      path.closed = true;
+      if (values.smoothing) {
+        path.smooth();
+      }
+
+      // Set path to null (nothing) so the path check above
+      // will force a new path next time the user drags fast enough:
+      path = null;
+    }
+  }
+}
+
+function onMouseUp(event) {
+  if (path) {
+    path.add(event.point);
+    path.closed = true;
+    path.smooth();
+    
+    // Set path to null (nothing) so the path check above
+    // will force a new path next time the user drags fast enough:
+    path = null;
+  }
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 // PoseNet handling
@@ -25,39 +99,37 @@ let poseNetOptions = {
   quantBytes: 2,
 };
 
-let leftWristCircle = new Path.Circle({
-  center: view.center,
-  radius: 10,
-  fillColor: 'red'
-});
-
-let leftWristPath = null;
+let isDown = false
+let lastPoint = null
 
 function onPose(poses) {
   let pose = poses[0];
   if (pose) {
     let leftWrist = pose.pose.leftWrist;
-    let rightWrist = pose.pose.rightWrist;
-    if (leftWrist.confidence > 0.3) {
-      leftWristCircle.position = leftWrist;
-      leftWristCircle.visible = true;
-
-      if (!leftWristPath) {
-        leftWristPath = new Path({
-          strokeColor: 'black',
-          strokeWidth: values.strokeWidth,
-          strokeJoin: 'round'
-        });
+    let point = new Point(leftWrist);
+    if (!lastPoint) {
+      lastPoint = point;
+    }
+    let delta = point - lastPoint;
+    let middlePoint = (point + lastPoint) / 2;
+    if (leftWrist.confidence >= 0.3) {
+      if (isDown) {
+        if (tool.onMouseDrag) {
+          tool.onMouseDrag({ type: 'mousedrag', point, lastPoint, middlePoint, delta })
+        }
+      } else {
+        if (tool.onMouseDown) {
+          tool.onMouseDown({ type: 'mousedown', point, lastPoint, middlePoint, delta })
+        }
+        isDown = true;
       }
-
-      leftWristPath.add(leftWrist);
-      if (values.smoothing) {
-        leftWristPath.smooth();
+      lastPoint = point
+    } else if (isDown) {
+      if (tool.onMouseUp) {
+        tool.onMouseUp({ type: 'mouseup', point, lastPoint, middlePoint, delta })
       }
-    } else {
-      leftWristCircle.visible = false;
-
-      leftWristPath = null;
+      lastPoint = point
+      isDown = false;
     }
   }
 }
@@ -106,14 +178,23 @@ setupPoseNet();
 // Interface
 
 let components = {
-  strokeWidth: {
-    type: 'slider',
-    range: [1, 10],
-    label: 'Stroke Width'
-  },
-
   smoothing: {
     label: 'Smoothing'
+  },
+
+  minSpeed: {
+    type: 'slider',
+    range: [0, 50],
+    label: 'Min Speed'
+  },
+
+  maxDistance: {
+    type: 'slider',
+    range: [0, 50],
+    label: 'Max Distance',
+    onChange(value) {
+      tool.maxDistance = value;
+    }
   },
 
   download: {
