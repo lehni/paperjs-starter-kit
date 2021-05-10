@@ -5,7 +5,7 @@ let values = {
   zigZag: false,
   strokeWidth: 1
 };
-tool.minDistance = 20;
+tool.minDistance = 1;
 
 ////////////////////////////////////////////////////////////////////////////////
 // Mouse handling
@@ -83,3 +83,6 @@ let components = {
 };
 
 let palette = new Palette('Cloud Tool', components, values);
+palette.onChange = function() {
+  processInlinedSVG();
+}

@@ -4,8 +4,17 @@
 function followPaths(paths) {
   for (let path of paths) {
     triggerMouseEvent('mousedown', path.getPointAt(0));
-    for (let pos = 0; pos <= path.length; pos += 10) {
-      triggerMouseEvent('mousemove', path.getPointAt(pos));
+
+    // p = v * t
+    let acceleration = 0.5;
+    let velocity = 0;
+    let position = 0;
+
+    while (position <= path.length) {
+      triggerMouseEvent('mousemove', path.getPointAt(position));
+      console.log(path.getCurvatureAt(position));
+      velocity += acceleration;
+      position += velocity;
     }
     triggerMouseEvent('mouseup', path.getPointAt(path.length));
   }
