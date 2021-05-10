@@ -1,76 +1,44 @@
-////////////////////////////////////////////////////////////////////////////////
-// Values
+tool.fixedDistance = 15;
 
-let values = {
-  zigZag: false,
-  strokeWidth: 1
-};
-tool.minDistance = 20;
-
-////////////////////////////////////////////////////////////////////////////////
-// Mouse handling
+let raster = new Raster({
+  source: 'img/marilyn.jpeg',
+  onLoad: function() {
+    raster.fitBounds(view.bounds);
+    raster.opacity = 0.25;
+  }
+})
 
 let path;
 
 function onMouseDown(event) {
-  path = new Path({
-    strokeColor: 'black',
-    strokeCap: 'round',
-    strokeJoin: 'round',
-    strokeWidth: values.strokeWidth
-  });
+  path = new Path();
+  path.fillColor = 'black';
   path.add(event.point);
 }
 
 function onMouseDrag(event) {
-  if (values.zigZag) {
-    path.arcTo(event.point, event.count % 2 == 0);
+  let size;
+  if (raster.bounds.contains(event.point)) {
+    // We're inside the raster, take the color at the mouse position
+    // and use its gray-scale value to scale our side-stepping vector
+    // used to construct the stroke geometry.
+    let pixelPoint = raster.globalToLocal(event.point) + raster.size / 2;
+    let color = raster.getPixel(pixelPoint);
+    size = 1 - color.gray;
   } else {
-    path.arcTo(event.point);
+    // Leave some visible trace when the mouse is outside of the raster
+    size = 0.05;
   }
+  let step = event.delta.rotate(90) * size;
+  let top = event.middlePoint + step;
+  let bottom = event.middlePoint - step;
+  path.add(top);
+  path.insert(0, bottom);
+  path.smooth();
 }
 
-////////////////////////////////////////////////////////////////////////////////
-// Interface
-
-let components = {
-  zigZag: {
-    label: 'Zig Zag'
-  },
-
-  strokeWidth: {
-    type: 'slider',
-    range: [1, 10],
-    label: 'Stroke Width'
-  },
-
-  minDistance: {
-    type: 'slider',
-    range: [0, 100],
-    value: tool.minDistance,
-    label: 'Min Step',
-    onChange: function(value) {
-      tool.minDistance = value; 
-    } 
-  },
-
-  download: {
-    type: 'button',
-    value: 'Download SVG',
-    onClick() {
-			let svg = paper.project.exportSVG({ asString: true });
-      // See: https://stackoverflow.com/a/49917066/1163708
-      let a = document.createElement('a');
-			a.href = URL.createObjectURL(new Blob([svg], { type: 'image/svg+xml' }));
-      let timestamp = new Date().toJSON().replace(/[-:]/g, '')
-      let parts = timestamp.match(/^20(.*)T(.*)\.\d*Z$/);
-			a.download = `Export_${parts[1]}_${parts[2]}.svg`;
-      let body = document.body;
-      body.appendChild(a);
-      a.click();
-      body.removeChild(a);
-    }
-  }
-};
-
-let palette = new Palette('Cloud Tool', components, values);
+function onMouseUp(event) {
+  path.add(event.point);
+  path.closed = true;
+  path.smooth();
+}
