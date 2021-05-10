@@ -54,6 +54,15 @@ let components = {
     } 
   },
 
+  process: {
+    type: 'button',
+    value: 'Process SVG',
+    onClick() {
+      console.log('Processing');
+      processInlinedSVG();
+    }
+  },
+
   download: {
     type: 'button',
     value: 'Download SVG',

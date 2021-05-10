@@ -5,6 +5,10 @@ body {
   height: 100%;
 }
 
+#svg {
+  display: none;
+}
+
 /* Scale canvas with resize attribute to full size */
 canvas[resize],
 canvas[paper-data-resize] {

@@ -26,7 +26,7 @@ function triggerMouseEvent(type, point) {
 ////////////////////////////////////////////////////////////////////////////////
 // SVG Import
 
-function loadSVG(svg) {
+function processSVG(svg) {
   project.clear();
   let item = project.activeLayer.importSVG(svg, {
     expandShapes: true,
@@ -46,6 +46,16 @@ function loadSVG(svg) {
   followPaths(paths);
 }
 
+function processInlinedSVG() {
+  let svg = document.getElementById('svg');
+  processSVG(svg);
+}
+
+// Export globally
+window.processInlinedSVG = processInlinedSVG;
+
+processInlinedSVG();
+
 ////////////////////////////////////////////////////////////////////////////////
 // Drag File to Load
 
@@ -57,7 +67,7 @@ function onDocumentDrop(event) {
   var reader = new FileReader();
   var file = event.dataTransfer.files[0];
   reader.onloadend = function(event) {
-    loadSVG(event.target.result);
+    processSVG(event.target.result);
   };
   reader.readAsText(file);
   event.preventDefault();
