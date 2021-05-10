@@ -12,7 +12,6 @@ function followPaths(paths) {
 
     while (position <= path.length) {
       triggerMouseEvent('mousemove', path.getPointAt(position));
-      console.log(path.getCurvatureAt(position));
       velocity += acceleration;
       position += velocity;
     }
@@ -46,6 +45,7 @@ function processSVG(svg) {
   item.firstChild.remove();
 
   item.fitBounds(view.bounds);
+  item.visible = false;
 
   // Get all paths, and follow them with the mouse
   let paths = item.project.getItems({
