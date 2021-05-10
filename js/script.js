@@ -1,6 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 // Tool
 
+let values = {};
+
 tool.fixedDistance = 15;
 
 var drawingLayer = project.activeLayer;
@@ -84,3 +86,46 @@ function onDocumentDrop(event) {
 document.addEventListener('drop', onDocumentDrop, false);
 document.addEventListener('dragover', onDocumentDrag, false);
 document.addEventListener('dragleave', onDocumentDrag, false);
+
+////////////////////////////////////////////////////////////////////////////////
+// Interface
+
+let components = {
+  minDistance: {
+    type: 'slider',
+    range: [0, 100],
+    value: tool.minDistance,
+    label: 'Min Step',
+    onChange: function(value) {
+      tool.fixedDistance = value; 
+    } 
+  },
+
+  clear: {
+    type: 'button',
+    value: 'Clear',
+    onClick() {
+      project.activeLayer.clear();
+    }
+  },
+
+  download: {
+    type: 'button',
+    value: 'Download SVG',
+    onClick() {
+			let svg = paper.project.exportSVG({ asString: true });
+      // See: https://stackoverflow.com/a/49917066/1163708
+      let a = document.createElement('a');
+			a.href = URL.createObjectURL(new Blob([svg], { type: 'image/svg+xml' }));
+      let timestamp = new Date().toJSON().replace(/[-:]/g, '')
+      let parts = timestamp.match(/^20(.*)T(.*)\.\d*Z$/);
+			a.download = `Export_${parts[1]}_${parts[2]}.svg`;
+      let body = document.body;
+      body.appendChild(a);
+      a.click();
+      body.removeChild(a);
+    }
+  }
+};
+
+let palette = new Palette('Raster Brush', components, values);
