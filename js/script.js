@@ -1,3 +1,6 @@
+////////////////////////////////////////////////////////////////////////////////
+// Tool
+
 tool.fixedDistance = 15;
 
 let raster = new Raster({
@@ -42,3 +45,24 @@ function onMouseUp(event) {
   path.closed = true;
   path.smooth();
 }
+
+////////////////////////////////////////////////////////////////////////////////
+// Drag'n'Drop Images
+
+function onDocumentDrag(event) {
+	event.preventDefault();
+}
+
+function onDocumentDrop(event) {
+	var file = event.dataTransfer.files[0];
+	var reader = new FileReader();
+	reader.onload = function(event) {
+    raster.source = event.target.result;
+	};
+	reader.readAsDataURL(file);
+	event.preventDefault();
+}
+
+document.addEventListener('drop', onDocumentDrop, false);
+document.addEventListener('dragover', onDocumentDrag, false);
+document.addEventListener('dragleave', onDocumentDrag, false);
