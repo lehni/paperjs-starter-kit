@@ -3,6 +3,9 @@
 
 tool.fixedDistance = 15;
 
+var drawingLayer = project.activeLayer;
+var rasterLayer = new Layer();
+
 let raster = new Raster({
   source: 'img/marilyn.jpeg',
   onLoad: function() {
@@ -10,6 +13,8 @@ let raster = new Raster({
     raster.opacity = 0.25;
   }
 })
+
+drawingLayer.activate();
 
 let path;
 
@@ -54,12 +59,25 @@ function onDocumentDrag(event) {
 }
 
 function onDocumentDrop(event) {
-	var file = event.dataTransfer.files[0];
-	var reader = new FileReader();
-	reader.onload = function(event) {
-    raster.source = event.target.result;
-	};
-	reader.readAsDataURL(file);
+  for (const file of event.dataTransfer.files) {
+    if (file.type.startsWith('image/svg')) {
+      console.log('SVG');
+      // Dropped a SVG
+      var reader = new FileReader();
+      reader.onloadend = function(event) {
+        processSVG(event.target.result);
+      };
+      reader.readAsText(file);
+    } else if (file.type.startsWith('image')) {
+      console.log('image');
+      // Dropped an actual image
+      var reader = new FileReader();
+      reader.onload = function(event) {
+        raster.source = event.target.result;
+      };
+      reader.readAsDataURL(file);
+    }
+  }
 	event.preventDefault();
 }
 
